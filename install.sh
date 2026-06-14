@@ -126,8 +126,10 @@ chmod 644 /usr/share/wallpapers/wallpaper.png
 
 # copy dot files to skel and user profiles
 step_msg "Adding dot files to user home and skel file..."
-cp -r ./assets/config $HOME/.config
-cp -r ./assets/config /etc/skel/.config
+mkdir -p $HOME/.config
+cp -r ./assets/config/* $HOME/.config
+mkdir -p /etc/skel/.config
+cp -r ./assets/config/* /etc/skel/.config
 
 # adding lightDM greeter config
 step_msg "Adding lightDM greeter config..."
