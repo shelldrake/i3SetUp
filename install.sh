@@ -83,7 +83,9 @@ apt install -y -qq \
     evince \
     xclip \
     build-essential \
-    chromium
+    chromium \
+    wireshark \
+    tcpdump
 
 
 # Fixing Network Manager
@@ -98,16 +100,6 @@ fc-cache
 # installing TokyoNight GTK theme
 step_msg "Installing TokyoNight GTK themes..."
 unzip ./assets/theme/TokyoNight.zip -d /usr/share/themes
-
-# installing wireshark
-step_msg "Installing wireshark and adding user to group..."
-apt install -y wireshark
-usermod -aG wireshark ${USER}
-
-# installing tcpdump
-step_msg "Installing tcpdump and adding user to group..."
-apt install -y tcpdump
-usermod -aG tcpdump ${USER}
 
 # installing neovim
 step_msg "Installing neovim v0.12.2..."
@@ -124,12 +116,24 @@ chmod 644 /usr/share/avatar/avatar.png
 cp ./assets/wallpaper.png /usr/share/wallpapers/wallpaper.png
 chmod 644 /usr/share/wallpapers/wallpaper.png
 
-# copy dot files to skel and user profiles
-step_msg "Adding dot files to user home and skel file..."
-mkdir -p ${HOME}/.config
-cp -r ./assets/config/* ${HOME}/.config
+# copy dot files to skel
+step_msg "Adding dot files to skel file..."
 mkdir -p /etc/skel/.config
 cp -r ./assets/config/* /etc/skel/.config
+
+# copy dot files to all existing users and adding them to wireshark and tcpdump group
+step_msg "Adding dot files to all users and adding users to wireshark and tcpdump group..."
+for user_home in /home/*/; do
+    user_home="${user_home%/}"
+    username="${user_home##*/}"
+    dest="$user_home/.config"
+    mkdir $dest
+    cp -r /etc/skel/.config/* $dest
+    chown -R "$username:$(id -gn "$username")" "$dest"
+    usermod -aG wireshark $username
+    usermod -aG tcpdump $username
+done
+
 
 # adding lightDM greeter config
 step_msg "Adding lightDM greeter config..."
