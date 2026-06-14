@@ -102,19 +102,19 @@ unzip ./assets/theme/TokyoNight.zip -d /usr/share/themes
 # installing wireshark
 step_msg "Installing wireshark and adding user to group..."
 apt install -y wireshark
-usermod -aG wireshark $USER
+usermod -aG wireshark ${USER}
 
 # installing tcpdump
 step_msg "Installing tcpdump and adding user to group..."
 apt install -y tcpdump
-usermod -aG tcpdump $USER
+usermod -aG tcpdump ${USER}
 
 # installing neovim
 step_msg "Installing neovim v0.12.2..."
 mkdir -p /opt/nvim/0.12.2
 curl -Lso /opt/nvim/0.12.2/nvim-linux-x86_64.tar.gz https://github.com/neovim/neovim/releases/download/v0.12.2/nvim-linux-x86_64.tar.gz
 tar xf /opt/nvim/0.12.2/nvim-linux-x86_64.tar.gz -C /opt/nvim/0.12.2
-ln -s /opt/nvim/0.12.2/bin/nvim /usr/bin/vim
+ln -s /opt/nvim/0.12.2/nvim-linux-x86_64/bin/nvim /usr/bin/vim
 
 # adding wallpaper and user avatar
 step_msg "Adding wallpaper and user avatar..."
@@ -126,8 +126,8 @@ chmod 644 /usr/share/wallpapers/wallpaper.png
 
 # copy dot files to skel and user profiles
 step_msg "Adding dot files to user home and skel file..."
-mkdir -p $HOME/.config
-cp -r ./assets/config/* $HOME/.config
+mkdir -p ${HOME}/.config
+cp -r ./assets/config/* ${HOME}/.config
 mkdir -p /etc/skel/.config
 cp -r ./assets/config/* /etc/skel/.config
 
