@@ -7,7 +7,7 @@ You will need a base install of Debian 13
 ### Installation
 1. Clone the repo
 ```sh
-git clone https://url
+git clone https://github.com/shelldrake/i3SetUp.git
 ```
 2. cd into the directory
 ```sh
@@ -15,6 +15,6 @@ cd dirname
 ```
 3. Run install script as root
 ```sh
-sudo ./install.sh
+sudo bash install.sh
 ```
 
