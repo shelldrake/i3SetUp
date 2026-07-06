@@ -166,10 +166,6 @@ sudo ln -sf "/opt/nvim/${NVIM_VERSION}/nvim-linux-${NVIM_ARCH}/bin/nvim" /usr/bi
 step_msg "Installing impacket..."
 pipx install impacket
 
-# installng netexec
-step_msg "Installing NetExec..."
-pipx install git+https://github.com/Pennyw0rth/NetExec
-
 # installing rust
 step_msg "Installing Rust..."
 curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile default
