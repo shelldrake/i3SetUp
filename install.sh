@@ -211,6 +211,20 @@ exec /opt/burpsuite/BurpSuiteCommunity --user-config-file=/opt/burpsuite/dark-th
 EOF
 sudo chmod +x /usr/local/bin/burpsuite
 
+# add a rofi/drun-visible launcher entry; the installer runs as root via
+# sudo, so any desktop shortcut it creates itself lands under root's own
+# home directory and is invisible to normal users' application menus
+sudo tee /usr/share/applications/burpsuite.desktop >/dev/null << 'EOF'
+[Desktop Entry]
+Type=Application
+Name=Burp Suite Community Edition
+Comment=Web vulnerability scanner and proxy
+Exec=/usr/local/bin/burpsuite
+Icon=security-high
+Terminal=false
+Categories=Network;Security;
+EOF
+
 # installing Ghidra
 step_msg "Installing Ghidra..."
 if ! GHIDRA_URL="$(curl -fsSL "https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/latest" | grep -oP '"browser_download_url":\s*"\K[^"]+\.zip')" || [[ -z "$GHIDRA_URL" ]]; then
@@ -235,6 +249,19 @@ sudo ln -sf "/opt/ghidra/${GHIDRA_DIR}/ghidraRun" /usr/local/bin/ghidra
 # before falling back to the saved per-user theme choice)
 step_msg "Configuring Ghidra to start in dark mode..."
 echo "VMARGS=-DTheme=Class:generic.theme.builtin.FlatDarkTheme" | sudo tee -a "/opt/ghidra/${GHIDRA_DIR}/support/launch.properties" >/dev/null
+
+# add a rofi/drun-visible launcher entry; the zip install has no installer
+# at all, so nothing ever registers it in the applications menu on its own
+sudo tee /usr/share/applications/ghidra.desktop >/dev/null << EOF
+[Desktop Entry]
+Type=Application
+Name=Ghidra
+Comment=Software reverse engineering framework
+Exec=/usr/local/bin/ghidra
+Icon=/opt/ghidra/${GHIDRA_DIR}/support/ghidra.ico
+Terminal=false
+Categories=Development;Security;
+EOF
 
 # installing rust
 step_msg "Installing Rust..."
