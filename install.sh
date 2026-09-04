@@ -25,9 +25,9 @@ error_msg() {
 }
 
 # append a line to a file (as root) if it isn't already there
-add_path_line() {
+add_line_once() {
     local file="$1"
-    local line='export PATH=$PATH:/usr/local/go/bin'
+    local line="$2"
     if ! sudo grep -qxF "$line" "$file" 2>/dev/null; then
         echo "$line" | sudo tee -a "$file" >/dev/null
     fi
@@ -96,7 +96,9 @@ sudo apt install -y -qq \
     network-manager \
     network-manager-applet \
     pulseaudio \
-    pavucontrol
+    pavucontrol \
+    qt5-gtk-platformtheme \
+    qt6-gtk-platformtheme
 
 # installing essentials tools
 step_msg "Installing essential tools..."
@@ -110,6 +112,7 @@ sudo apt install -y -qq \
     fzf \
     jq \
     btop \
+    eza \
     git \
     eog \
     mpv \
@@ -143,6 +146,14 @@ sudo sed -i 's/managed=false/managed=true/g' /etc/NetworkManager/NetworkManager.
 # installing agave nerd font
 step_msg "Installing Agave Nerd Font..."
 sudo unzip -o ./assets/font/Agave.zip -d /usr/share/fonts/truetype/Agave
+
+# installing fallback fonts so Pango has coverage for glyphs Agave lacks
+# (CJK, emoji, extended symbols) instead of rendering blank/tofu boxes
+step_msg "Installing fallback fonts for broader Unicode coverage..."
+sudo apt install -y -qq \
+    fonts-noto-core \
+    fonts-noto-color-emoji
+
 sudo fc-cache -f
 
 # installing TokyoNight GTK theme
@@ -181,7 +192,9 @@ info_msg "Latest Go version: $GOLATEST"
 curl -fLso /tmp/go.tar.gz "https://go.dev/dl/${GOLATEST}.linux-${GO_ARCH}.tar.gz"
 sudo rm -rf /usr/local/go
 sudo tar -xzf /tmp/go.tar.gz -C /usr/local
-add_path_line /etc/skel/.bashrc
+add_line_once /etc/skel/.bashrc 'export PATH=$PATH:/usr/local/go/bin'
+add_line_once /etc/skel/.bashrc 'alias please="sudo"'
+add_line_once /etc/skel/.bashrc 'alias ll="eza"'
 
 # install node
 step_msg "Installing Node.js..."
@@ -207,6 +220,8 @@ sudo chmod 644 /usr/share/wallpapers/wallpaper.png
 step_msg "Adding dot files to skel file..."
 sudo mkdir -p /etc/skel/.config
 sudo cp -r ./assets/config/* /etc/skel/.config
+sudo cp ./assets/xprofile /etc/skel/.xprofile
+sudo cp ./assets/gtkrc-2.0 /etc/skel/.gtkrc-2.0
 
 # copy dot files to all existing users and adding them to wireshark and tcpdump group
 step_msg "Adding dot files to all users and adding users to wireshark and tcpdump group..."
@@ -219,8 +234,14 @@ for user_home in /home/*/; do
     sudo mkdir -p "$dest"
     sudo cp -r /etc/skel/.config/* "$dest"
     sudo chown -R "$username:$(id -gn "$username")" "$dest"
-    add_path_line "$user_home/.bashrc"
+    add_line_once "$user_home/.bashrc" 'export PATH=$PATH:/usr/local/go/bin'
+    add_line_once "$user_home/.bashrc" 'alias please="sudo"'
+    add_line_once "$user_home/.bashrc" 'alias ll="eza"'
     sudo chown "$username:$(id -gn "$username")" "$user_home/.bashrc"
+    sudo cp /etc/skel/.xprofile "$user_home/.xprofile"
+    sudo chown "$username:$(id -gn "$username")" "$user_home/.xprofile"
+    sudo cp /etc/skel/.gtkrc-2.0 "$user_home/.gtkrc-2.0"
+    sudo chown "$username:$(id -gn "$username")" "$user_home/.gtkrc-2.0"
     sudo usermod -aG wireshark "$username"
     sudo usermod -aG tcpdump "$username"
 done

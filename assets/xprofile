@@ -1,0 +1,6 @@
+# Sourced by LightDM's session script before i3 starts, so exports here are
+# inherited by every app the session launches.
+
+# Make Qt apps (e.g. Wireshark) follow the system GTK theme instead of
+# defaulting to a light Qt style, so they pick up the dark TokyoNight theme.
+export QT_QPA_PLATFORMTHEME=gtk3
