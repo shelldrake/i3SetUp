@@ -194,7 +194,7 @@ sudo rm -rf /usr/local/go
 sudo tar -xzf /tmp/go.tar.gz -C /usr/local
 add_line_once /etc/skel/.bashrc 'export PATH=$PATH:/usr/local/go/bin'
 add_line_once /etc/skel/.bashrc 'alias please="sudo"'
-add_line_once /etc/skel/.bashrc 'alias ll="eza"'
+add_line_once /etc/skel/.bashrc 'alias ll="eza --icons --git -la"'
 
 # install node
 step_msg "Installing Node.js..."
@@ -220,7 +220,7 @@ sudo chmod 644 /usr/share/wallpapers/wallpaper.png
 step_msg "Adding dot files to skel file..."
 sudo mkdir -p /etc/skel/.config
 sudo cp -r ./assets/config/* /etc/skel/.config
-sudo cp ./assets/xprofile /etc/skel/.xprofile
+sudo cp ./assets/xsessionrc /etc/skel/.xsessionrc
 sudo cp ./assets/gtkrc-2.0 /etc/skel/.gtkrc-2.0
 
 # copy dot files to all existing users and adding them to wireshark and tcpdump group
@@ -238,8 +238,8 @@ for user_home in /home/*/; do
     add_line_once "$user_home/.bashrc" 'alias please="sudo"'
     add_line_once "$user_home/.bashrc" 'alias ll="eza"'
     sudo chown "$username:$(id -gn "$username")" "$user_home/.bashrc"
-    sudo cp /etc/skel/.xprofile "$user_home/.xprofile"
-    sudo chown "$username:$(id -gn "$username")" "$user_home/.xprofile"
+    sudo cp /etc/skel/.xsessionrc "$user_home/.xsessionrc"
+    sudo chown "$username:$(id -gn "$username")" "$user_home/.xsessionrc"
     sudo cp /etc/skel/.gtkrc-2.0 "$user_home/.gtkrc-2.0"
     sudo chown "$username:$(id -gn "$username")" "$user_home/.gtkrc-2.0"
     sudo usermod -aG wireshark "$username"

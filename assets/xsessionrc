@@ -1,0 +1,7 @@
+# Debian's /etc/X11/Xsession sources ~/.xsessionrc (not ~/.xprofile) for
+# environment variables before exec'ing the session's STARTUP command, so
+# exports here are inherited by every app i3 launches.
+
+# Make Qt apps (e.g. Wireshark) follow the system GTK theme instead of
+# defaulting to a light Qt style, so they pick up the dark TokyoNight theme.
+export QT_QPA_PLATFORMTHEME=gtk3
