@@ -324,7 +324,7 @@ for user_home in /home/*/; do
     sudo chown -R "$username:$(id -gn "$username")" "$dest"
     add_line_once "$user_home/.bashrc" 'export PATH=$PATH:/usr/local/go/bin'
     add_line_once "$user_home/.bashrc" 'alias please="sudo"'
-    add_line_once "$user_home/.bashrc" 'alias ll="eza"'
+    add_line_once "$user_home/.bashrc" 'alias ll="eza --icons --git -la"'
     add_line_once "$user_home/.bashrc" 'alias bat="batcat"'
     sudo chown "$username:$(id -gn "$username")" "$user_home/.bashrc"
     sudo cp /etc/skel/.xsessionrc "$user_home/.xsessionrc"
