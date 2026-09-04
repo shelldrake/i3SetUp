@@ -3,11 +3,12 @@
 # exit on error, unset var, or pipeline failure
 set -euo pipefail
 
-# colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+# colors (ANSI-C quoting embeds a real escape byte so these also work
+# with plain `cat`, not just `echo -e`)
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[1;33m'
+RED=$'\033[0;31m'
+NC=$'\033[0m' # No Color
 
 # step messages
 step_msg() {
@@ -100,9 +101,14 @@ sudo apt install -y -qq \
     qt5-gtk-platformtheme \
     qt6-gtk-platformtheme
 
+# preseed wireshark's debconf question so it doesn't prompt to allow
+# non-root packet capture; usermod -aG wireshark below grants the access
+step_msg "Preseeding wireshark non-root capture answer..."
+echo "wireshark-common wireshark-common/install-setuid boolean true" | sudo debconf-set-selections
+
 # installing essentials tools
 step_msg "Installing essential tools..."
-sudo apt install -y -qq \
+sudo DEBIAN_FRONTEND=noninteractive apt install -y -qq \
     curl \
     wget \
     zip \
@@ -113,6 +119,7 @@ sudo apt install -y -qq \
     jq \
     btop \
     eza \
+    bat \
     git \
     eog \
     mpv \
@@ -127,6 +134,7 @@ sudo apt install -y -qq \
     binwalk \
     xxd \
     pipx \
+    openjdk-21-jdk \
     proxychains4 \
     nmap \
     socat \
@@ -177,6 +185,52 @@ sudo ln -sf "/opt/nvim/${NVIM_VERSION}/nvim-linux-${NVIM_ARCH}/bin/nvim" /usr/bi
 step_msg "Installing impacket..."
 pipx install impacket
 
+# installing Burp Suite Community Edition (installer URL always resolves to latest release)
+step_msg "Installing Burp Suite Community Edition..."
+curl -fLso /tmp/burpsuite_community_linux.sh "https://portswigger.net/burp/releases/download?product=community&type=Linux"
+chmod +x /tmp/burpsuite_community_linux.sh
+sudo /tmp/burpsuite_community_linux.sh -q -dir /opt/burpsuite
+
+# force Burp's dark theme via its documented config-overlay mechanism
+# (--user-config-file layers this JSON on top of normal settings on every launch)
+step_msg "Configuring Burp Suite to start in dark mode..."
+cat << 'EOF' | sudo tee /opt/burpsuite/dark-theme.json >/dev/null
+{
+    "user_options": {
+        "display": {
+            "user_interface": {
+                "look_and_feel": "Dark"
+            }
+        }
+    }
+}
+EOF
+sudo tee /usr/local/bin/burpsuite >/dev/null << 'EOF'
+#!/usr/bin/env bash
+exec /opt/burpsuite/BurpSuiteCommunity --user-config-file=/opt/burpsuite/dark-theme.json "$@"
+EOF
+sudo chmod +x /usr/local/bin/burpsuite
+
+# installing Ghidra
+step_msg "Installing Ghidra..."
+if ! GHIDRA_URL="$(curl -fsSL "https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/latest" | grep -oP '"browser_download_url":\s*"\K[^"]+\.zip')" || [[ -z "$GHIDRA_URL" ]]; then
+    error_msg "Failed to get latest Ghidra release"
+    exit 1
+fi
+GHIDRA_VERSION="$(basename "$GHIDRA_URL" .zip)"
+info_msg "Latest Ghidra version: $GHIDRA_VERSION"
+
+curl -fLso /tmp/ghidra.zip "$GHIDRA_URL"
+sudo mkdir -p /opt/ghidra
+sudo unzip -qo /tmp/ghidra.zip -d /opt/ghidra
+sudo ln -sf "/opt/ghidra/${GHIDRA_VERSION}/ghidraRun" /usr/local/bin/ghidra
+
+# force Ghidra's built-in Flat Dark theme via its supported launch.properties
+# VMARGS mechanism (sets the "Theme" system property, which Preferences reads
+# before falling back to the saved per-user theme choice)
+step_msg "Configuring Ghidra to start in dark mode..."
+echo "VMARGS=-DTheme=Class:generic.theme.builtin.FlatDarkTheme" | sudo tee -a "/opt/ghidra/${GHIDRA_VERSION}/support/launch.properties" >/dev/null
+
 # installing rust
 step_msg "Installing Rust..."
 curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile default
@@ -195,6 +249,7 @@ sudo tar -xzf /tmp/go.tar.gz -C /usr/local
 add_line_once /etc/skel/.bashrc 'export PATH=$PATH:/usr/local/go/bin'
 add_line_once /etc/skel/.bashrc 'alias please="sudo"'
 add_line_once /etc/skel/.bashrc 'alias ll="eza --icons --git -la"'
+add_line_once /etc/skel/.bashrc 'alias bat="batcat"'
 
 # install node
 step_msg "Installing Node.js..."
@@ -223,8 +278,9 @@ sudo cp -r ./assets/config/* /etc/skel/.config
 sudo cp ./assets/xsessionrc /etc/skel/.xsessionrc
 sudo cp ./assets/gtkrc-2.0 /etc/skel/.gtkrc-2.0
 
-# copy dot files to all existing users and adding them to wireshark and tcpdump group
-step_msg "Adding dot files to all users and adding users to wireshark and tcpdump group..."
+# copy dot files to all existing users, adding them to wireshark and tcpdump
+# group, and installing GEF (GDB Enhanced Features)
+step_msg "Adding dot files to all users, adding users to wireshark and tcpdump group, and installing GEF..."
 shopt -s nullglob
 for user_home in /home/*/; do
     user_home="${user_home%/}"
@@ -237,6 +293,7 @@ for user_home in /home/*/; do
     add_line_once "$user_home/.bashrc" 'export PATH=$PATH:/usr/local/go/bin'
     add_line_once "$user_home/.bashrc" 'alias please="sudo"'
     add_line_once "$user_home/.bashrc" 'alias ll="eza"'
+    add_line_once "$user_home/.bashrc" 'alias bat="batcat"'
     sudo chown "$username:$(id -gn "$username")" "$user_home/.bashrc"
     sudo cp /etc/skel/.xsessionrc "$user_home/.xsessionrc"
     sudo chown "$username:$(id -gn "$username")" "$user_home/.xsessionrc"
@@ -244,6 +301,9 @@ for user_home in /home/*/; do
     sudo chown "$username:$(id -gn "$username")" "$user_home/.gtkrc-2.0"
     sudo usermod -aG wireshark "$username"
     sudo usermod -aG tcpdump "$username"
+    # GEF installs into this user's home (~/.gdbinit, ~/.gef-<version>.py),
+    # so it must run as that user rather than root
+    sudo -u "$username" -H bash -c "$(curl -fsSL https://gef.blah.cat/sh)"
 done
 shopt -u nullglob
 
@@ -270,8 +330,8 @@ ${YELLOW}=== POST-INSTALLATION INSTRUCTIONS ===${NC}
 
 2. At the LightDM login screen, select "i3" as your session type
 
-3. First time you log in to i3, you'll be asked to generate a config file
-   Select "Yes" and choose your mod key (Alt or Super/Windows key)
+3. A config file is already in place (mod key is Super/Windows key), so
+   i3 will not prompt you to generate one on first login
 
 4. Common i3 keyboard shortcuts:
    • ${YELLOW}\$mod+Enter${NC}: Open terminal
@@ -284,5 +344,16 @@ ${YELLOW}=== POST-INSTALLATION INSTRUCTIONS ===${NC}
    • ${YELLOW}\$mod+Shift+numbers${NC}: Move window to workspace
 
 5. For additional configuration, edit ~/.config/i3/config
+
+6. Security tools installed: wireshark and tcpdump can capture packets as
+   a non-root user (no setup needed), Burp Suite Community Edition is
+   available via the ${YELLOW}burpsuite${NC} command, Ghidra is available
+   via the ${YELLOW}ghidra${NC} command, and ${YELLOW}gdb${NC} starts with
+   GEF (GDB Enhanced Features) loaded automatically
+
+7. Shell conveniences already in your ~/.bashrc:
+   • ${YELLOW}ll${NC}   -> eza --icons --git -la
+   • ${YELLOW}bat${NC}  -> batcat
+   • ${YELLOW}please${NC} -> sudo
 
 EOF
