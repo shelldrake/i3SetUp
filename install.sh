@@ -223,13 +223,18 @@ info_msg "Latest Ghidra version: $GHIDRA_VERSION"
 curl -fLso /tmp/ghidra.zip "$GHIDRA_URL"
 sudo mkdir -p /opt/ghidra
 sudo unzip -qo /tmp/ghidra.zip -d /opt/ghidra
-sudo ln -sf "/opt/ghidra/${GHIDRA_VERSION}/ghidraRun" /usr/local/bin/ghidra
+
+# the zip's internal top-level directory name (e.g. "ghidra_12.1.3_PUBLIC")
+# drops the release asset filename's trailing build-date suffix, so it must
+# be discovered on disk rather than derived from GHIDRA_VERSION/GHIDRA_URL
+GHIDRA_DIR="$(find /opt/ghidra -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n1)"
+sudo ln -sf "/opt/ghidra/${GHIDRA_DIR}/ghidraRun" /usr/local/bin/ghidra
 
 # force Ghidra's built-in Flat Dark theme via its supported launch.properties
 # VMARGS mechanism (sets the "Theme" system property, which Preferences reads
 # before falling back to the saved per-user theme choice)
 step_msg "Configuring Ghidra to start in dark mode..."
-echo "VMARGS=-DTheme=Class:generic.theme.builtin.FlatDarkTheme" | sudo tee -a "/opt/ghidra/${GHIDRA_VERSION}/support/launch.properties" >/dev/null
+echo "VMARGS=-DTheme=Class:generic.theme.builtin.FlatDarkTheme" | sudo tee -a "/opt/ghidra/${GHIDRA_DIR}/support/launch.properties" >/dev/null
 
 # installing rust
 step_msg "Installing Rust..."
