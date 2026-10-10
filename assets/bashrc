@@ -1,0 +1,115 @@
+# ~/.bashrc: executed by bash(1) for non-login shells.
+
+# Only run for interactive shells
+[[ $- == *i* ]] || return
+
+# ── History ──────────────────────────────────────────────────────────────────
+HISTCONTROL=ignoreboth        # skip duplicates and lines starting with a space
+HISTSIZE=1000
+HISTFILESIZE=2000
+shopt -s histappend           # append to history instead of overwriting
+shopt -s checkwinsize         # keep LINES/COLUMNS updated after each command
+#shopt -s globstar            # uncomment to let ** match recursively
+
+# ── Environment ──────────────────────────────────────────────────────────────
+# Friendlier `less` for non-text files
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# Chroot name, shown in the prompt when set
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+# ── Prompt ───────────────────────────────────────────────────────────────────
+case "$TERM" in
+    xterm-color|*-256color) color_prompt=yes ;;
+esac
+
+if [ -n "$force_color_prompt" ]; then
+    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+        color_prompt=yes
+    else
+        color_prompt=
+    fi
+fi
+
+# Git prompt helper (Debian/Ubuntu path)
+if [ -f /usr/lib/git-core/git-sh-prompt ]; then
+    . /usr/lib/git-core/git-sh-prompt
+    GIT_PS1_SHOWDIRTYSTATE=1      # * unstaged, + staged
+    GIT_PS1_SHOWUNTRACKEDFILES=1  # % untracked files
+    GIT_PS1_SHOWUPSTREAM=auto     # < behind, > ahead, <> diverged, = in sync
+    GIT_PS1_SHOWCOLORHINTS=1
+fi
+
+# Line 1: ╭─(user@host)-[/full/path]-(git branch status)-[exit code]
+# Line 2: ╰─→
+__build_prompt() {
+    local last_status=$?   # must be the first line
+
+    local reset='\[\e[00m\]' green='\[\e[01;32m\]' blue='\[\e[01;34m\]' red='\[\e[01;31m\]'
+    [ "$color_prompt" = yes ] || { reset= green= blue= red=; }
+
+    # Exit code in red at the end of line 1, only when the last command failed
+    local status=
+    [ "$last_status" -ne 0 ] && status="-[${red}${last_status}${reset}]"
+
+    # Terminal window title
+    local title=
+    case "$TERM" in
+        xterm*|rxvt*) title='\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]' ;;
+    esac
+
+    # Nerd Font icons as raw UTF-8 bytes, so they work whatever the locale
+    local branch=$'\xee\xb1\xaf'   # U+EC6F, before the git branch
+
+    # ${PWD} is expanded when the prompt is drawn, giving the full path (no ~)
+    local pre="${title}${debian_chroot:+($debian_chroot)}╭─(${green}\u${reset}@${green}\h${reset})-[${blue}"'${PWD}'"${reset}]"
+    local post="${status}\n╰─$ "
+
+    if declare -F __git_ps1 >/dev/null; then
+        __git_ps1 "$pre" "$post" "-(${branch} %s)"   # sets PS1, with colors
+    else
+        PS1="$pre$post"
+    fi
+}
+
+PROMPT_COMMAND="__build_prompt${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+
+# ── Colors ───────────────────────────────────────────────────────────────────
+if [ -x /usr/bin/dircolors ]; then
+    if [ -r ~/.dircolors ]; then
+        eval "$(dircolors -b ~/.dircolors)"
+    else
+        eval "$(dircolors -b)"
+    fi
+    alias ls='ls --color=auto'
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+
+# ── Aliases ──────────────────────────────────────────────────────────────────
+# Desktop notification for long-running commands:  sleep 10; alert
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+
+command -v eza    >/dev/null && alias ll='eza --icons --git -lag'
+command -v batcat >/dev/null && alias bat='batcat --theme ansi'
+alias please='sudo'
+
+# Extra aliases live in ~/.bash_aliases
+[ -f ~/.bash_aliases ] && . ~/.bash_aliases
+
+# ── Completion & tools ───────────────────────────────────────────────────────
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
+fi
+
+command -v fzf >/dev/null && eval "$(fzf --bash)"
+. "$HOME/.cargo/env"
+export PATH=$PATH:/usr/local/go/bin
+export PATH="$HOME/.local/bin:$PATH"
