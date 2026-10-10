@@ -42,7 +42,7 @@ if [ -f /usr/lib/git-core/git-sh-prompt ]; then
     GIT_PS1_SHOWCOLORHINTS=1
 fi
 
-# Line 1: ╭─(user@host)-[/full/path]-(git branch status)-[exit code]
+# Line 1: ╭─(venv)-(user@host)-[/full/path]-(git branch status)-[exit code]
 # Line 2: ╰─→
 __build_prompt() {
     local last_status=$?   # must be the first line
@@ -54,6 +54,10 @@ __build_prompt() {
     local status=
     [ "$last_status" -ne 0 ] && status="-[${red}${last_status}${reset}]"
 
+    # Active Python venv, shown at the start of line 1
+    local venv=
+    [ -n "$VIRTUAL_ENV" ] && venv="(${VIRTUAL_ENV##*/})-"
+
     # Terminal window title
     local title=
     case "$TERM" in
@@ -64,7 +68,7 @@ __build_prompt() {
     local branch=$'\xee\xb1\xaf'   # U+EC6F, before the git branch
 
     # ${PWD} is expanded when the prompt is drawn, giving the full path (no ~)
-    local pre="${title}${debian_chroot:+($debian_chroot)}╭─(${green}\u${reset}@${green}\h${reset})-[${blue}"'${PWD}'"${reset}]"
+    local pre="${title}${debian_chroot:+($debian_chroot)}╭─${venv}(${green}\u${reset}@${green}\h${reset})-[${blue}"'${PWD}'"${reset}]"
     local post="${status}\n╰─$ "
 
     if declare -F __git_ps1 >/dev/null; then
@@ -73,6 +77,9 @@ __build_prompt() {
         PS1="$pre$post"
     fi
 }
+
+# The prompt shows the venv itself; stop activate from editing PS1
+export VIRTUAL_ENV_DISABLE_PROMPT=1
 
 PROMPT_COMMAND="__build_prompt${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
 
